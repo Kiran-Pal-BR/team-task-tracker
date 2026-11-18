@@ -1,0 +1,12 @@
+.env*
+.idea/
+*.iml
+*.log
+*.jar
+*.war
+Dockerfile.bak
+.vscode/
+*.swp
+*~
+.DS_Store
+docker-compose.override.yml
