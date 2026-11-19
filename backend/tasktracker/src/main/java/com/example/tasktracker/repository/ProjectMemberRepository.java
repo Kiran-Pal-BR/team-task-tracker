@@ -10,8 +10,8 @@ import java.util.UUID;
 @Repository
 public interface ProjectMemberRepository extends JpaRepository<ProjectMember, ProjectMemberId>{
     //To look all the members of the project
-    List<ProjectMember> findByProjectId(UUID projectId);
+    List<ProjectMember> findById_projectId(UUID projectId);
 
     //TO get the list of a specific user
-    List<ProjectMember> findByUserId(UUID userId);
+    List<ProjectMember> findById_userId(UUID userId);
 }

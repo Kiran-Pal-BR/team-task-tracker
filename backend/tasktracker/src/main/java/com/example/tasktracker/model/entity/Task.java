@@ -15,7 +15,6 @@ import java.util.UUID;
 @Builder
 public class Task {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
     @Column(name = "project_id", nullable = false)

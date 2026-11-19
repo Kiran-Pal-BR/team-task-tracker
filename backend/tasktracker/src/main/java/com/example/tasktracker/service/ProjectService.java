@@ -1,10 +1,11 @@
 package com.example.tasktracker.service;
-import com.example.tasktracker.model.entity.Project;
-import com.example.tasktracker.repository.ProjectRepository;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.stereotype.Service;
+
 import com.example.tasktracker.exception.BadRequestException;
 import com.example.tasktracker.exception.ResourceNotFoundException;
+import com.example.tasktracker.model.entity.Project;
+import com.example.tasktracker.repository.ProjectRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -13,19 +14,21 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class ProjectService {
 
-
     private final ProjectRepository projectRepository;
-    
-    //Constructor injections
+
+
     public ProjectService(ProjectRepository projectRepository) {
         this.projectRepository = projectRepository;
     }
 
-    // Create project
+    //Create new project
     @Transactional
     public Project createProject(Project project, UUID currentUserId) {
         if (project == null) {
             throw new BadRequestException("Project payload cannot be null");
+        }
+        if (currentUserId == null) {
+            throw new BadRequestException("Current user ID cannot be null");
         }
         if (project.getId() == null) {
             project.setId(UUID.randomUUID());
@@ -37,12 +40,24 @@ public class ProjectService {
         return projectRepository.save(project);
     }
 
-    // Put Update Projects
+
+    // PUT: Full replacement of an existing project.
+
     @Transactional
     public Project replaceProject(UUID id, Project updatedDetails, UUID currentUserId) {
         if (id == null) {
             throw new BadRequestException("Project ID cannot be null");
         }
+        if (updatedDetails == null) {
+            throw new BadRequestException("Updated project details cannot be null");
+        }
+        if (currentUserId == null) {
+            throw new BadRequestException("Current user ID cannot be null");
+        }
+        if (updatedDetails.getName() == null || updatedDetails.getName().isBlank()) {
+            throw new BadRequestException("Project name cannot be null or blank");
+        }
+
         Project existingProject = getProjectById(id);
 
         existingProject.setName(updatedDetails.getName());
@@ -52,15 +67,27 @@ public class ProjectService {
         return projectRepository.save(existingProject);
     }
 
-    //Patch UPdate Project
+
+     //PATCH: Partial update of an existing project.
+
     @Transactional
     public Project patchProject(UUID id, Project updatedDetails, UUID currentUserId) {
         if (id == null) {
             throw new BadRequestException("Project ID cannot be null");
         }
+        if (updatedDetails == null) {
+            throw new BadRequestException("Updated project details cannot be null");
+        }
+        if (currentUserId == null) {
+            throw new BadRequestException("Current user ID cannot be null");
+        }
+
         Project existingProject = getProjectById(id);
 
-        if (updatedDetails.getName() != null && !updatedDetails.getName().isBlank()) {
+        if (updatedDetails.getName() != null) {
+            if (updatedDetails.getName().isBlank()) {
+                throw new BadRequestException("Project name cannot be blank");
+            }
             existingProject.setName(updatedDetails.getName());
         }
         if (updatedDetails.getDescription() != null) {
@@ -71,13 +98,16 @@ public class ProjectService {
         return projectRepository.save(existingProject);
     }
 
-    //To fetch the list of all projects
+
+     //Retrieve all projects.
+
     public List<Project> getAllProjects() {
         return projectRepository.findAll();
     }
 
 
-    //To search project by ID
+     // Retrieve a project by ID.
+
     public Project getProjectById(UUID id) {
         if (id == null) {
             throw new BadRequestException("Project ID cannot be null");
@@ -86,7 +116,9 @@ public class ProjectService {
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found with id: " + id));
     }
 
-    //To search project by its name
+
+     //Search projects by name (case-insensitive).
+
     public List<Project> searchProjectsByName(String name) {
         if (name == null || name.isBlank()) {
             return List.of();
@@ -94,7 +126,9 @@ public class ProjectService {
         return projectRepository.findByNameContainingIgnoreCase(name);
     }
 
-    //To Delete the Project
+
+     //Delete a project by ID.
+
     @Transactional
     public void deleteProject(UUID id) {
         if (id == null) {
@@ -105,5 +139,4 @@ public class ProjectService {
         }
         projectRepository.deleteById(id);
     }
-
 }

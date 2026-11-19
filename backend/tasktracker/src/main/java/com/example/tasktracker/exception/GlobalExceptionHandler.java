@@ -1,8 +1,10 @@
 package com.example.tasktracker.exception;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -31,14 +33,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Map<String, Object>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        String message = String.format("Parameter '%s' should be of type UUID", ex.getName());
+        Class<?> requiredType = ex.getRequiredType();
+        String expectedType = (requiredType != null) ? requiredType.getSimpleName() : "valid type";
+        String message = String.format("Parameter '%s' should be of type %s", ex.getName(), expectedType);
         log.warn("Type mismatch exception: {}", message);
         return buildErrorResponse(HttpStatus.BAD_REQUEST, message);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
-        // Explicitly typed Map for field errors
         Map<String, String> errors = new HashMap<>();
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
             errors.put(error.getField(), error.getDefaultMessage());
@@ -46,15 +49,28 @@ public class GlobalExceptionHandler {
 
         log.warn("Validation failed for request: {}", errors);
 
-        // Explicitly typed Map for response body
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("status", HttpStatus.BAD_REQUEST.value());
         body.put("error", HttpStatus.BAD_REQUEST.getReasonPhrase());
         body.put("message", "Validation failed for one or more fields");
-        body.put("errors", errors); // Included field-level errors map
+        body.put("errors", errors);
 
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleUnreadableJson(HttpMessageNotReadableException ex) {
+        String message = "Malformed JSON request body or invalid field value";
+        log.warn("Unreadable HTTP message: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, message);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        String message = "Database constraint violation or duplicate entry";
+        log.warn("Data integrity violation: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.CONFLICT, message);
     }
 
     @ExceptionHandler(Exception.class)
@@ -64,7 +80,6 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<Map<String, Object>> buildErrorResponse(HttpStatus status, String message) {
-        // Explicitly typed Map using diamond operator with types
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("status", status.value());
